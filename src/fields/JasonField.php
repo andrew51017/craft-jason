@@ -49,6 +49,8 @@ class JasonField extends Field
 
     public $allowRawEditing = true;
 
+    const INVALID_JSON = "Invalid JSON";
+
     // Static Methods
     // =========================================================================
 
@@ -123,11 +125,13 @@ class JasonField extends Field
      */
     public function normalizeValue($value, ElementInterface $element = null)
     {
-        if (Craft::$app->request->getIsSiteRequest() && !Craft::$app->request->getIsActionRequest()) {
-            return json_decode($value, true);
-        } else {
-            return $value;
-        }
+        if (empty($value)) return [];
+
+        $decodedValue = json_decode($value, true);
+
+        if (json_last_error() == JSON_ERROR_NONE) return $decodedValue;
+
+        return JasonField::INVALID_JSON;
     }
 
     /**
@@ -358,6 +362,7 @@ class JasonField extends Field
      */
     public function getInputHtml($value, ElementInterface $element = null): string
     {
+        
         // If array, assume we're accessing from template
         if (is_array($value)) {
             $json = Json::encode($value);
@@ -421,10 +426,8 @@ class JasonField extends Field
     {
         $value = $element->getFieldValue($this->handle);
         
-        $json = json_decode($value); 
-
-        if ($json === null) {
-        // JSON cannot be decoded
+        // Getting the value normalizes it which attempts to JSON decode. If decode fails, we return a known string. Check for it here.
+        if ($value == JasonField::INVALID_JSON) {
             $element->addError($this->handle, Craft::t('site', 'Not valid JSON.'));
         }
     }
